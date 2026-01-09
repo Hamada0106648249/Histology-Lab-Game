@@ -3,140 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pathology Race: Lab 1</title>
+    <title>Histo-Hero: The Pathologist's Race</title>
     <style>
-        :root { --med-blue: #2c3e50; --biotech-pink: #ec407a; --glass: rgba(255, 255, 255, 0.9); }
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        #game-box { max-width: 800px; width: 100%; background: var(--glass); backdrop-filter: blur(10px); padding: 30px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; }
+        :root { --med-blue: #2c3e50; --success: #27ae60; --danger: #e74c3c; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #game-container { max-width: 700px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; }
+        .hud { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
         
-        .microscope-lens { width: 350px; height: 350px; border: 15px solid #333; border-radius: 50%; margin: 0 auto 20px; overflow: hidden; background: #000; box-shadow: inset 0 0 30px #000, 0 10px 20px rgba(0,0,0,0.2); position: relative; }
-        #histo-img { width: 100%; height: 100%; object-fit: cover; filter: blur(20px); transition: filter 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* Microscope View */
+        .microscope-lens { width: 320px; height: 320px; border: 12px solid #333; border-radius: 50%; margin: 0 auto 20px; overflow: hidden; background: #222; position: relative; box-shadow: inset 0 0 20px #000; }
+        #histo-img { width: 100%; height: 100%; object-fit: cover; filter: blur(20px); transition: filter 0.4s ease; }
         
-        .hud { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.2rem; color: var(--med-blue); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-        .focus-btn { background: #333; color: #00ff00; border: 2px solid #00ff00; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,255,0,0.3); }
-        .focus-btn:active { transform: scale(0.95); }
+        .focus-btn { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-weight: bold; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .focus-btn:hover { background: #2980b9; }
+
+        #question-box { font-size: 1.1rem; margin-bottom: 20px; min-height: 50px; font-weight: 600; color: var(--med-blue); }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button.option { padding: 15px; border: 2px solid var(--med-blue); background: white; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button.option:hover { background: var(--med-blue); color: white; }
         
-        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        button.option { padding: 15px; border: 2px solid var(--med-blue); border-radius: 12px; background: white; color: var(--med-blue); font-weight: 600; cursor: pointer; transition: 0.3s; }
-        button.option:hover { background: var(--med-blue); color: white; transform: translateY(-3px); }
-        
-        #leaderboard { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #ccc; }
+        .error-msg { position: absolute; top: 40%; width: 100%; color: #ff4d4d; font-weight: bold; padding: 10px; }
+        #feedback { margin-top: 20px; font-weight: bold; min-height: 24px; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
-<div id="game-box">
+<div id="game-container">
     <div class="hud">
         <div>Score: <span id="score">0</span></div>
         <div>Streak: <span id="streak">0</span>x</div>
     </div>
 
     <div class="microscope-lens">
-        <img id="histo-img" src="" alt="Focus required">
+        <div id="loading-error" class="error-msg hidden">⚠️ IMAGE MISSING</div>
+        <img id="histo-img" src="" alt="Specimen">
     </div>
 
-    <button class="focus-btn" onclick="adjustFocus()">🔬 ROTATE MICROSCOPE FOCUS</button>
+    <button class="focus-btn" onclick="adjustFocus()">🔬 ADJUST MICROSCOPE FOCUS</button>
 
-    <div id="quiz-section">
-        <h3 id="question-text">Identify the specimen...</h3>
+    <div id="game-ui">
+        <div id="question-box">Loading specimen...</div>
         <div class="options-grid" id="options"></div>
+        <div id="feedback"></div>
     </div>
 
-    <div id="result-screen" class="hidden">
-        <h1>🏆 LAB COMPLETED</h1>
-        <p id="final-status"></p>
-        <div id="leaderboard">
-            <h3>Local High Scores</h3>
-            <ul id="score-list" style="list-style:none; padding:0;"></ul>
-        </div>
-        <button onclick="location.reload()" class="focus-btn" style="color:white; border-color:white; margin-top:20px;">RESTART CHALLENGE</button>
+    <div id="end-screen" class="hidden">
+        <h2>🔬 Lab Rotation Complete</h2>
+        <p id="final-stats"></p>
+        <button onclick="location.reload()" class="focus-btn">Restart Lab Challenge</button>
     </div>
 </div>
 
 <script>
+    // Data strictly mapped from your Lab1.pptx content
     const labData = [
-        { img: "img2.jpg", q: "Flattened, polygonal cells with centrally located nuclei. Found in endothelial lining.", a: "Simple Squamous", info: "Matches Image 2 in your Lab." },
-        { img: "img3.jpg", q: "Extremely thin layer lining 95-97% of lung alveoli.", a: "Type I Pneumocytes", info: "Visible as a very thin layer in light microscopy." },
-        { img: "img4.jpg", q: "Cells are roughly square on transverse section. Found in renal tubules.", a: "Simple Cuboidal", info: "Typical for glandular ducts and ovaries." },
-        { img: "img7.jpg", q: "Appears stratified, but all cells contact the basement membrane.", a: "Pseudostratified Columnar", info: "Typical for the trachea and respiratory passages." },
-        { img: "img8.jpg", q: "Features large surface 'Umbrella' cells with 1-2 nuclei.", a: "Transitional Epithelium", info: "Adapted for volume changes in the bladder." },
-        { img: "img9.jpg", q: "Single-cell glands with a narrow stalk and dilated apical part.", a: "Goblet Cells", info: "Secretes mucus in respiratory and intestinal tracts." }
+        { img: "img2.jpg", q: "Flattened, polygonal cells with a centrally located nucleus. Typical for vessel lining.", a: "Simple Squamous", note: "Simple squamous epithelium lines vessels and Wharton's jelly." },
+        { img: "img3.jpg", q: "Extremely thin layer lining 95-97% of lung alveolar surface.", a: "Type I Pneumocytes", note: "These membranous pneumocytes are vital for gas exchange." },
+        { img: "img4.jpg", q: "Cells are roughly square on transverse section. Typical for renal tubules.", a: "Simple Cuboidal", note: "Found in renal tubules, glandular ducts, and the ovarian surface." },
+        { img: "img5.jpg", q: "Tall columnar cells. Typical for the gastrointestinal tract.", a: "Simple Columnar", note: "This is the primary epithelium of the GI tract." },
+        { img: "img7.jpg", q: "Looks stratified, but all cells touch the basement membrane. Found in the trachea.", a: "Pseudostratified Columnar", note: "The 'stratification' is only illusory; typical for respiratory passages." },
+        { img: "img8.jpg", q: "Surface layer features large 'umbrella' cells. Adapted for volume changes.", a: "Transitional (Urothelium)", note: "Urothelium lines the bladder, ureters, and renal pelvis." },
+        { img: "img9.jpg", q: "Single-cell glands with a narrow stalk and dilated top containing granules.", a: "Goblet Cells", note: "Common in respiratory and intestinal epithelium for mucus secretion." }
     ];
 
-    let score = 0;
+    let currentScore = 0;
     let streak = 0;
     let currentIdx = 0;
-    let blur = 20;
+    let blurLevel = 20;
 
     function adjustFocus() {
-        blur = Math.max(0, blur - 5);
-        document.getElementById('histo-img').style.filter = `blur(${blur}px)`;
+        blurLevel = Math.max(0, blurLevel - 5);
+        document.getElementById('histo-img').style.filter = `blur(${blurLevel}px)`;
     }
 
     function initLevel() {
-        if (currentIdx >= labData.length) return endGame();
+        if (currentIdx >= labData.length) return showResults();
         
-        const current = labData[currentIdx];
-        blur = 20;
+        const data = labData[currentIdx];
         const img = document.getElementById('histo-img');
-        img.src = current.img;
-        img.style.filter = `blur(20px)`;
-        img.onerror = () => { img.alt = "⚠️ MISSING FILE: Upload " + current.img + " to GitHub"; };
+        const errorMsg = document.getElementById('loading-error');
         
-        document.getElementById('question-text').innerText = current.q;
+        // Reset state for new question
+        blurLevel = 20;
+        img.style.filter = "blur(20px)";
+        errorMsg.classList.add('hidden');
         
-        const opts = document.getElementById('options');
-        opts.innerHTML = '';
+        // Update Image with Cache Buster to prevent "Same Image" bug
+        img.src = data.img + "?t=" + new Date().getTime();
         
-        const choices = [current.a, "Stratified Squamous", "Simple Columnar", "Dense Connective"].sort(() => Math.random() - 0.5);
+        // Check if image fails to load
+        img.onerror = () => {
+            errorMsg.innerText = "⚠️ MISSING: " + data.img;
+            errorMsg.classList.remove('hidden');
+        };
+
+        document.getElementById('question-box').innerText = data.q;
+        const optsDiv = document.getElementById('options');
+        optsDiv.innerHTML = '';
+
+        const choices = [data.a, "Stratified Squamous", "Stratified Cuboidal", "Connective Tissue"].sort(() => Math.random() - 0.5);
         
         choices.forEach(c => {
             const btn = document.createElement('button');
             btn.className = 'option';
             btn.innerText = c;
-            btn.onclick = () => check(c, current.a);
-            opts.appendChild(btn);
+            btn.onclick = () => checkAnswer(c, data.a, data.note);
+            optsDiv.appendChild(btn);
         });
     }
 
-    function check(choice, correct) {
+    function checkAnswer(selected, correct, note) {
         document.getElementById('histo-img').style.filter = "blur(0px)";
-        if (choice === correct) {
-            score += 100 + (streak * 25);
+        const feedback = document.getElementById('feedback');
+        
+        if (selected === correct) {
+            currentScore += (100 + (streak * 20));
             streak++;
-            alert("✅ Correct! " + labData[currentIdx].info);
+            feedback.innerHTML = `<span style="color:var(--success)">✅ Correct!</span> ${note}`;
         } else {
             streak = 0;
-            alert("❌ Incorrect! The correct answer was " + correct);
+            feedback.innerHTML = `<span style="color:var(--danger)">❌ Incorrect.</span> The answer is ${correct}.`;
         }
-        
-        document.getElementById('score').innerText = score;
+
+        document.getElementById('score').innerText = currentScore;
         document.getElementById('streak').innerText = streak;
-        currentIdx++;
-        setTimeout(initLevel, 500);
+
+        setTimeout(() => {
+            currentIdx++;
+            feedback.innerText = "";
+            initLevel();
+        }, 3500);
     }
 
-    function endGame() {
-        document.getElementById('quiz-section').classList.add('hidden');
-        document.getElementById('result-screen').classList.remove('hidden');
-        saveScore(score);
-    }
-
-    function saveScore(s) {
-        let scores = JSON.parse(localStorage.getItem('histoScores') || '[]');
-        scores.push({s, d: new Date().toLocaleDateString()});
-        scores.sort((a,b) => b.s - a.s);
-        localStorage.setItem('histoScores', JSON.stringify(scores.slice(0, 5)));
-        
-        const list = document.getElementById('score-list');
-        scores.slice(0, 5).forEach(item => {
-            list.innerHTML += `<li>Score: ${item.s} — ${item.d}</li>`;
-        });
+    function showResults() {
+        document.getElementById('game-ui').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+        document.getElementById('final-stats').innerText = `Your Final Lab Score: ${currentScore}`;
     }
 
     initLevel();
 </script>
-
 </body>
 </html>
